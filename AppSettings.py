@@ -1,7 +1,5 @@
-import os.path
+import os
 import json
-
-SETTINGS_PATH = 'settings.json'
 
 '''
     settings for our app
@@ -14,12 +12,14 @@ class AppSettings:
 
     loaded : bool = False
 
+    dir_path : str = (os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json'))
+
     def __init__(self) -> None:
         self.loaded = self.load()
 
     def load(self) -> bool:
         try:
-            with open(SETTINGS_PATH) as file:
+            with open(self.dir_path) as file:
                 data = json.load(file)
 
                 self.apikey = data['apikey']
@@ -29,10 +29,11 @@ class AppSettings:
                 #print(data['apikey'])
                 #print(data['email'])
                 #print(data['organisation'])
+                #print(data['testmode'])
             return True
         except Exception as e:
-            #print("ERROR:", e)
-            return False
+            print("ERROR:", e)
+            
 
     def save(self) -> None:
         data = {
@@ -42,7 +43,7 @@ class AppSettings:
             'testmode' : self.testmode
         }
         
-        with open(SETTINGS_PATH, 'w') as file:
+        with open(self.dir_path, 'w') as file:
             json.dump(data, file)
 
     def __str__(self) -> str:

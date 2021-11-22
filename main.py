@@ -1,5 +1,6 @@
 import dataclasses
 import datetime
+from PySimpleGUI.PySimpleGUI import Window
 import requests
 import json
 import base64
@@ -47,13 +48,16 @@ def TestAuth(issues : list[IssueInfo], authToken : str):
             
         #print (f'Status: {f"{bcolors.OKBLUE}Success" if response.status_code == 200 else f"{bcolors.FAIL}Failed"}    IssueCode: {issue.code} \t Message[0:64]: [ {response.text[0:64]} ...]{bcolors.ENDC}')
 
-    #print(f"TESTING COMPLETE: {(count200 / len(issues)) * 100}% PASSED")
+    messagebox("TESTING COMPLETE",f"{(count200 / len(issues)) * 100}% PASSED")
 
 
 '''
     sends off our timesheets
 '''
 def Run(month : int, days : list[int], issues : list[IssueInfo], authToken : str): 
+    successCount : int = 0
+    failedSends : str = ''
+
     headers = {
                 'authorization':f'Basic {authToken}',
                 'content-type':'application/json',
@@ -82,6 +86,12 @@ def Run(month : int, days : list[int], issues : list[IssueInfo], authToken : str
                           
             response = requests.post(url, headers=headers, data=json.dumps(payload)) 
 
+            if response.status_code == 201:
+                successCount += 1
+            else:
+                failedSends += f'\n{issue.code}: {issue.comment} // ERROR: {response.text[0:32]}'
+
+    messagebox('Submission info', f'Success count: {successCount}\nFailures:\n{failedSends}')
             #print(f'Status: {f"{bcolors.OKBLUE}Sent" if response.status_code == 201 else f"{bcolors.FAIL}ERROR: {response.status_code} -> {response.text[0:32]}"} \t Date: {day}/{month}/21 \t Issue:{issue} \t Comment:{issue.comment}{bcolors.ENDC}\n') 
 
 '''
@@ -97,11 +107,12 @@ def settingsPage(settings : AppSettings) -> None:
     settingsLayout = [
         [
             [sg.Text('Jira API Key')],
-            [sg.Input(settings.apikey, size=(30,1), key='-apikey-',password_char='*')],
+            [sg.Input(settings.apikey if settings.loaded else '', size=(30,1), key='-apikey-',password_char='*')],
             [sg.Text('User Email')],
-            [sg.Input(settings.email, size=(30,1), key='-email-')],
+            [sg.Input(settings.email if settings.loaded else '', size=(30,1), key='-email-')],
             [sg.Text('Organisation Name')],
-            [sg.Input(settings.organisation, size=(30,1), key='-org-')],
+            [sg.Input(settings.organisation if settings.loaded else '', size=(30,1), key='-org-')],            
+            [sg.Checkbox('Testmode', default = settings.testmode if settings.loaded else False, key='-testmode-')],
             [sg.Button('SAVE SETTINGS'), sg.Button('CANCEL', button_color=('white', 'red'))]
         ]
     ]
@@ -115,10 +126,23 @@ def settingsPage(settings : AppSettings) -> None:
             settings.apikey = values['-apikey-']
             settings.email = values['-email-']
             settings.organisation = values['-org-']
+            settings.testmode = values['-testmode-']
             settings.save()
             break
     window.close()
 
+'''
+    messagebox implementation
+'''
+def messagebox(title:str, message:str):
+    layout = [
+        [
+            [sg.Multiline(message, size=(40,10), disabled=True)],
+            [sg.Button('CLOSE')]
+        ]
+    ]
+
+    window = sg.Window(title, layout).read()
 
 
 '''
@@ -127,7 +151,7 @@ def settingsPage(settings : AppSettings) -> None:
 def main() -> None:
     settings = AppSettings()
     #print(settings.loaded)
-    if settings.loaded == False:
+    if not settings.loaded:
         settingsPage(settings)
     
     #print (settings)
@@ -219,9 +243,8 @@ def main() -> None:
                         selectedIssue.startMin = int(values['-minstart-']) if values['-hrstart-'].isdigit() else 0
                         selectedIssue.setDur(int(values['-hrdur-']) if values['-hrdur-'].isdigit() else 0, int(values['-mindur-']) if values['-mindur-'].isdigit() else 0)
                         window['-lb-'].Update(values=lVals)
-                    except Exception as e:
-                        pass
-                        #print(e)
+                    except Exception as e:                        
+                        messagebox("Error!", e)
                     finally:
                         lVals = sortIssuesByStartTime(lVals)
                         lb = window['-lb-']
@@ -265,7 +288,7 @@ def main() -> None:
                     Run(month, days, lVals, authToken)
                 
             except Exception as e:
-                pass #print(e)           
+                messagebox("Error!", e)          
 
     # end of execution
     window.close()
