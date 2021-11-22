@@ -1,3 +1,11 @@
+'''
+Basic Timesheet automation for Jira
+(c) Thomas Duffin, Oct 18th 2021
+Free to use, modify, distribute.
+    "I take no responsibility for any messed up time sheets caused by this program.
+     I DO NOT validate the inputs in this version. If you mess up you'll be deleting
+     all of these worklogs *by hand*."
+'''
 import dataclasses
 import datetime
 from PySimpleGUI.PySimpleGUI import Window
